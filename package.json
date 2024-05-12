@@ -1,0 +1,31 @@
+{
+  "name": "bookshelf-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "watch": "nodemon src/server.js",
+    "lint": "npx eslint"
+  },
+  "keywords": [
+    "bookshelf api",
+    "api book",
+    "book api",
+    "book library api",
+    "simple api"
+  ],
+  "author": "Wahyu Siwananda",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "^9.2.0",
+    "eslint": "^9.2.0",
+    "globals": "^15.2.0",
+    "nodemon": "^3.1.0"
+  },
+  "dependencies": {
+    "@hapi/hapi": "^21.3.9",
+    "nanoid": "^3.3.7"
+  }
+}

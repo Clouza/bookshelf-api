@@ -1,0 +1,2 @@
+# Function vs Class
+Function digunakan pada bookshelf-api sebagai penanda bahwa itu adalah fungsi helper, memiliki tanggung jawabnya sendiri, tidak bergantung dengan kode lain. Sedangkan class digunakan untuk memudahkan penggunaan kembali kode dengan pewarisan serta kustomisasi yang fleksibel.
