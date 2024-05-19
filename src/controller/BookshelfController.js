@@ -9,24 +9,28 @@ class BookshelfController extends HttpController {
         super(request, h);
         this.request = request;
         this.h = h;
+
+        this.httpCodeError = 500;
     }
 
-    addBook() {
+    addNewBook() {
         try {
             const { name, year, author, summary, publisher, pageCount, readPage, reading } = this.request.payload;
 
             if (name == undefined) {
-                throw new HttpRequestError('Gagal menambahkan buku. Mohon isi nama buku', 400);
+                this.httpCodeError = 400;
+                throw new HttpRequestError('Gagal menambahkan buku. Mohon isi nama buku');
             }
 
             if (readPage > pageCount) {
-                throw new HttpRequestError('Gagal menambahkan buku. readPage tidak boleh lebih besar dari pageCount', 400);
+                this.httpCodeError = 400;
+                throw new HttpRequestError('Gagal menambahkan buku. readPage tidak boleh lebih besar dari pageCount');
             }
 
             const id = nanoid(16);
-            const finished = false;
+            const finished = readPage == pageCount;
             const insertedAt = new Date().toISOString();
-            const updateAt = insertedAt;
+            const updatedAt = insertedAt;
             const book = {
                 id,
                 name,
@@ -39,14 +43,15 @@ class BookshelfController extends HttpController {
                 finished,
                 reading,
                 insertedAt,
-                updateAt
+                updatedAt
             };
 
             bookshelf.push(book);
             const save = bookshelf.filter((book) => book.id === id).length > 0;
 
             if (!save) {
-                throw new HttpRequestError('Gagal menambahkan buku. Buku sudah ada', 400);
+                this.httpCodeError = 400;
+                throw new HttpRequestError('Gagal menambahkan buku. Buku sudah ada');
             }
 
             const data = {
@@ -59,15 +64,52 @@ class BookshelfController extends HttpController {
 
             return this.send(data, 201);
         } catch (err) {
-            return new HttpRequestError(err).httpResponse(this.h);
+            return new HttpRequestError(err.message, this.httpCodeError).httpResponse(this.h);
         }
     }
 
     getBooks() {
+        const { name, finished, reading  } = this.request.query;
+        let books;
+
+        if (name != undefined) {
+            books = bookshelf.filter(book => book.name.toLowerCase().includes(name.toLowerCase()));
+        }
+
+        if (finished != undefined && finished == 1) {
+            books = bookshelf.filter(book => book.finished);
+        }
+
+        if (finished != undefined && finished == 0) {
+            books = bookshelf.filter(book => !book.finished);
+        }
+
+        if (reading != undefined && reading == 1) {
+            books = bookshelf.filter(book => book.reading);
+        }
+
+        if (reading != undefined && reading == 0) {
+            books = bookshelf.filter(book => !book.reading);
+        }
+
+        if (name != undefined || finished != undefined || reading != undefined) {
+            books = books.map(book => ({
+                id: book.id,
+                name: book.name,
+                publisher: book.publisher
+            }));
+        } else {
+            books = bookshelf.map(book => ({
+                id: book.id,
+                name: book.name,
+                publisher: book.publisher
+            }));
+        }
+
         return this.send({
             status: 'success',
             data: {
-                books: bookshelf
+                books
             }
         });
     }
@@ -78,7 +120,8 @@ class BookshelfController extends HttpController {
             const book = bookshelf.filter((book) => book.id === bookId)[0];
 
             if (book == undefined) {
-                throw new HttpRequestError('Buku tidak ditemukan', 404);
+                this.httpCodeError = 404;
+                throw new HttpRequestError('Buku tidak ditemukan');
             }
 
             const data = {
@@ -90,7 +133,7 @@ class BookshelfController extends HttpController {
 
             return this.send(data);
         } catch (err) {
-            return new HttpRequestError(err).httpResponse(this.h);
+            return new HttpRequestError(err.message, this.httpCodeError).httpResponse(this.h);
         }
     }
 
@@ -100,23 +143,20 @@ class BookshelfController extends HttpController {
             const { name, year, author, summary, publisher, pageCount, readPage, reading } = this.request.payload;
 
             if (name == undefined) {
-                throw new HttpRequestError('Gagal memperbarui buku. Mohon isi nama buku', 400);
+                this.httpCodeError = 400;
+                throw new HttpRequestError('Gagal memperbarui buku. Mohon isi nama buku');
             }
 
             if (readPage > pageCount) {
-                throw new HttpRequestError('Gagal memperbarui buku. readPage tidak boleh lebih besar dari pageCount', 400);
+                this.httpCodeError = 400;
+                throw new HttpRequestError('Gagal memperbarui buku. readPage tidak boleh lebih besar dari pageCount');
             }
 
-            if (bookId == undefined) {
-                throw new HttpRequestError('Gagal memperbarui buku. Id tidak ditemukan', 404);
-            }
-
-            const updatedAt = new Date().toISOString();
-            const index = books.findIndex((book) => book.id === id);
-
-            if (index !== -1) {
-                books[index] = {
-                    ...books[index],
+            const index = bookshelf.findIndex((book) => book.id === bookId);
+            if (index != -1) {
+                bookshelf[index].updatedAt = new Date().toISOString();
+                bookshelf[index] = {
+                    ...bookshelf[index],
                     name,
                     year,
                     author,
@@ -124,43 +164,46 @@ class BookshelfController extends HttpController {
                     publisher,
                     pageCount,
                     readPage,
-                    reading,
-                    updatedAt
+                    reading
                 };
             } else {
-                throw new HttpRequestError('Gagal memperbarui buku. Id tidak ditemukan', 404);
+                this.httpCodeError = 404;
+                throw new HttpRequestError('Gagal memperbarui buku. Id tidak ditemukan');
             }
-
-            this.send({
-                status: 'success',
-                message: 'Buku berhasil diperbarui'
-            }).code(200);
         } catch (err) {
-            return new HttpRequestError(err).httpResponse(this.h);
+            return new HttpRequestError(err.message, this.httpCodeError).httpResponse(this.h);
         }
+
+        return this.send({
+            status: 'success',
+            message: 'Buku berhasil diperbarui'
+        });
     }
 
     deleteBook() {
         try {
             const { bookId } = this.request.params;
-            const index = books.findIndex((book) => book.id === id);
+            const index = bookshelf.findIndex((book) => book.id === bookId);
 
-            if (bookId == undefined) {
-                throw new HttpRequestError('Gagal memperbarui buku. Id tidak ditemukan', 404);
+            if (index == undefined) {
+                this.httpCodeError = 404;
+                throw new HttpRequestError('Gagal memperbarui buku. Id tidak ditemukan');
             }
 
             if (index !== -1) {
-                books.splice(index, 1);
-                const data = h.response({
+                bookshelf.splice(index, 1);
+                const data = this.h.response({
                     status: 'success',
                     message: 'Buku berhasil dihapus'
                 }).code(200);
 
                 return this.send(data);
+            } else {
+                this.httpCodeError = 404;
+                throw new HttpRequestError('Buku gagal dihapus. Id tidak ditemukan');
             }
-
         } catch (err) {
-            return new HttpRequestError(err).httpResponse(this.h);
+            return new HttpRequestError(err.message, this.httpCodeError).httpResponse(this.h);
         }
     }
 }
